@@ -59,8 +59,8 @@ local QUESTION=""   # Text of question
 local quecnt=0
 local SELECTION=1   # Type of question
 local anscnt=0      # Answers count
-local ansic_arr=()
-local answers=""
+local anscor=0
+local answers=0
 local category=0
 local i
 
@@ -74,16 +74,16 @@ IFS=':'
 		ansarr[$anscnt]="${string# }"
 		((answers=$answers+(2**$anscnt)))
 		((anscnt += 1))
+		((anscor += 1))
 	    ;;
 	    " A"|"A")
 		ansarr[$anscnt]="${string# }"
 		((anscnt += 1))
 	    ;;
 	    "Q")
-		[ ${#answers} -gt 1 ] && SELECTION=1 || SELECTION=0
-
+		[ ${anscor} -gt 1 ] && SELECTION=1 || SELECTION=0
 		#Needed to pass 1-st question
-		if [ -z "$answers" ]
+		if [ $answers == 0 ]
 		then
 		    QUESTION="${string# }"
 		    continue
@@ -132,9 +132,8 @@ EOF
 
 		anscnt=0
 		SELECTION=0
-		ansic_arr=()
-		ansc_arr=()
-		answers=""
+		answers=0
+		anscor=0
 	    ;;
 	    *)
 		echo "Unknown pair: \"$type:$string\"" >&2
