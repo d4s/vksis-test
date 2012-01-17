@@ -1,11 +1,17 @@
 #!/bin/bash
 
+DATE="`date +%Y.%m.%d-%H:%M`"
+CATEGORIES=()
 
-answertab=(A B C D E F G H I J K L M N O P Q R S T U V W X Y Z)
+i=0
+for f in *.txt
+do
+    CATEGORIES[$i]="${f%.txt}"
+#    CATEGORIES[$i]="${CATEGORIES[$i]//\&/&amp;}"
+    ((i+=1))
+done
 
-QUESTIONS=`cat *.txt | grep Q: | wc -l`
-CATEGORIES=`ls -1 *.txt | wc -l`
-
+QUESTIONS=`cat *.txt | grep ^Q: | wc -l`
 
 # HEAD
 cat <<EOF
@@ -16,7 +22,7 @@ cat <<EOF
 [DB_NAME]
 Вычислительные машины, системы и сети
 [DB_DATE]
-2011.06.26-18:07
+$DATE
 [DB_DATE_ULSD]
 false
 [DB_COMMENTS]
@@ -32,31 +38,31 @@ EOF
 
 for((i=0;i<20;i++))
 do
-    [ $i -le $CATEGORIES ] && echo -n "+" || echo -n "-"
+    [ ! -z "${CATEGORIES[$i]}" ] && echo -n "+" || echo -n "-"
 done
 echo
 
 for((i=0;i<20;i++))
 do
     echo "[DB_F$i]"
-    [ $i -le $CATEGORIES ] && echo "Category $i" || echo
+    [ ! -z "${CATEGORIES[$i]}" ] && echo "${CATEGORIES[$i]}" || echo
 done
 
 echo "[DB_FLAGS_END]"
 # End of HEAD
 
-exit
 # The stream should be finished by "Q:"
 # $1 - category number (zero by default)
 function quest()
 {
 local QUESTION=""   # Text of question
 local quecnt=0
-local SELECTION="0" # Type of question
+local SELECTION=1   # Type of question
 local anscnt=0      # Answers count
 local ansic_arr=()
 local answers=""
 local category=0
+local i
 
 [ -z "$1" ] || category=$1
 
@@ -66,7 +72,7 @@ IFS=':'
 	case $type in
 	    "*A")
 		ansarr[$anscnt]="${string# }"
-		answers="$answers${answertab[anscnt]}"
+		((answers=$answers+(2**$anscnt)))
 		((anscnt += 1))
 	    ;;
 	    " A"|"A")
@@ -74,7 +80,7 @@ IFS=':'
 		((anscnt += 1))
 	    ;;
 	    "Q")
-		[ ${#answers} -gt 1 ] && SELECTION=1
+		[ ${#answers} -gt 1 ] && SELECTION=1 || SELECTION=0
 
 		#Needed to pass 1-st question
 		if [ -z "$answers" ]
@@ -84,29 +90,41 @@ IFS=':'
 		fi
 
 		cat <<EOF
-		
-	  <question name="$QUESTION" flag="$category" group="" difficulty="0">
-	    <text>$QUESTION</text>
-		<answers selectiontype="$SELECTION" correctanswers="$answers">
+[Q_NAME]
+$QUESTION
+[Q_FLAG]
+$category
+[Q_GRP]
+
+[Q_DIF]
+0
+[Q_TEXT]
+$QUESTION
+[Q_ANS]
+$SELECTION
+$answers
+$anscnt
 EOF
 
 		for((i=0;i<anscnt;i++))
 		do
 		    cat <<EOF
-		    <answer name="${answertab[i]}">${ansarr[$i]}</answer>
+${ansarr[$i]}
 EOF
 		done
 
 
 
 		cat <<EOF
+[Q_EXPL]
 
-		    <explain></explain>
-		</answers>
-	    <ads icnt="0" ccnt="0" hidden="false"/>
-	    <images>
-	    </images>
-	  </question>
+[Q_ICCNT]
+0
+0
+[Q_HID]
+false
+[Q_SVG]
+0
 EOF
 
 		# reset vars
@@ -128,16 +146,11 @@ EOF
     done
 }
 
-
 i=0
-for f in common.txt
+for f in *.txt
 do
     FILE="${f%.txt}"
     (cat "$f" && echo "Q:") | grep -v "#" | grep -v "^[[:blank:]]*$" | quest $i
+#	sed s/'"'/"\&quot;"/g | quest $i
     ((i+=1))
 done
-
-cat <<EOF
-	</questions>
-</database>
-EOF
